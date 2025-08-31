@@ -1,0 +1,153 @@
+import { useState, useCallback } from 'react'
+import { PlaygroundToolbar } from './PlaygroundToolbar'
+import { CodeEditor } from './CodeEditor'
+import { BabylonCanvas } from './BabylonCanvas'
+import { PlaygroundStorage, PlaygroundScene } from '@/lib/supabase'
+import { useToast } from '@/hooks/use-toast'
+import { cn } from '@/lib/utils'
+
+export function PlaygroundLayout() {
+  const [code, setCode] = useState('')
+  const [language, setLanguage] = useState<'javascript' | 'typescript'>('javascript')
+  const [isRunning, setIsRunning] = useState(false)
+  const [currentScene, setCurrentScene] = useState<PlaygroundScene | null>(null)
+  const { toast } = useToast()
+
+  const handleRun = useCallback(() => {
+    setIsRunning(true)
+    // The canvas will automatically re-render when code changes
+    setTimeout(() => setIsRunning(false), 1000)
+  }, [])
+
+  const handleSave = useCallback(async () => {
+    try {
+      const scene: PlaygroundScene = {
+        id: currentScene?.id,
+        name: currentScene?.name || `Scene ${new Date().toLocaleString()}`,
+        code,
+        language
+      }
+      
+      const savedScene = await PlaygroundStorage.saveScene(scene)
+      setCurrentScene(savedScene)
+      
+      toast({
+        title: "Scene saved",
+        description: `Saved as "${savedScene.name}"`,
+      })
+    } catch (error) {
+      toast({
+        title: "Error saving scene",
+        description: "Failed to save the current scene",
+        variant: "destructive"
+      })
+    }
+  }, [code, language, currentScene, toast])
+
+  const handleNew = useCallback(() => {
+    setCode('')
+    setCurrentScene(null)
+    toast({
+      title: "New scene created",
+      description: "Starting with a fresh canvas",
+    })
+  }, [toast])
+
+  const handleClear = useCallback(() => {
+    setCode('')
+    toast({
+      title: "Code cleared",
+      description: "Editor has been cleared",
+    })
+  }, [toast])
+
+  const handleDownload = useCallback(() => {
+    const blob = new Blob([code], { type: 'text/javascript' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `babylon-scene.${language === 'typescript' ? 'ts' : 'js'}`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    
+    toast({
+      title: "Code downloaded",
+      description: `Downloaded as babylon-scene.${language === 'typescript' ? 'ts' : 'js'}`,
+    })
+  }, [code, language, toast])
+
+  const handleInspector = useCallback(() => {
+    toast({
+      title: "Inspector",
+      description: "Inspector feature coming soon!",
+    })
+  }, [toast])
+
+  const handleExamples = useCallback(() => {
+    toast({
+      title: "Examples",
+      description: "Examples gallery coming soon!",
+    })
+  }, [toast])
+
+  const handleSettings = useCallback(() => {
+    toast({
+      title: "Settings",
+      description: "Settings panel coming soon!",
+    })
+  }, [toast])
+
+  const handleSceneReady = useCallback((scene: any) => {
+    console.log('Scene ready:', scene)
+  }, [])
+
+  const handleSceneError = useCallback((error: Error) => {
+    toast({
+      title: "Scene Error",
+      description: error.message,
+      variant: "destructive"
+    })
+  }, [toast])
+
+  return (
+    <div className="playground-layout">
+      <PlaygroundToolbar
+        onRun={handleRun}
+        onSave={handleSave}
+        onInspector={handleInspector}
+        onDownload={handleDownload}
+        onNew={handleNew}
+        onClear={handleClear}
+        onExamples={handleExamples}
+        onSettings={handleSettings}
+        language={language}
+        onLanguageChange={setLanguage}
+        isRunning={isRunning}
+      />
+      
+      <div className="flex flex-1 h-[calc(100vh-3.5rem)]">
+        {/* Code Editor Panel */}
+        <div className="flex-1 editor-panel">
+          <CodeEditor
+            value={code}
+            onChange={setCode}
+            language={language}
+            className="h-full custom-scrollbar"
+          />
+        </div>
+        
+        {/* Canvas Panel */}
+        <div className="flex-1 canvas-panel">
+          <BabylonCanvas
+            code={code}
+            onSceneReady={handleSceneReady}
+            onError={handleSceneError}
+            className="h-full"
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
