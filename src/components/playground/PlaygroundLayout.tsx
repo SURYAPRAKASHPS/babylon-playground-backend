@@ -2,9 +2,12 @@ import { useState, useCallback } from 'react'
 import { PlaygroundToolbar } from './PlaygroundToolbar'
 import { CodeEditor } from './CodeEditor'
 import { BabylonCanvas } from './BabylonCanvas'
+import { AssetsPanel } from './AssetsPanel'
+import { useSceneManager } from './SceneManager'
 import { PlaygroundStorage, PlaygroundScene } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable'
 
 export function PlaygroundLayout() {
   const [code, setCode] = useState('')
@@ -12,6 +15,7 @@ export function PlaygroundLayout() {
   const [isRunning, setIsRunning] = useState(false)
   const [currentScene, setCurrentScene] = useState<PlaygroundScene | null>(null)
   const { toast } = useToast()
+  const { getSceneManager } = useSceneManager()
 
   const handleRun = useCallback(() => {
     setIsRunning(true)
@@ -101,7 +105,10 @@ export function PlaygroundLayout() {
 
   const handleSceneReady = useCallback((scene: any) => {
     console.log('Scene ready:', scene)
-  }, [])
+    // Setup scene manager with gizmos and code synchronization
+    const sceneManager = getSceneManager()
+    sceneManager.setScene(scene, setCode)
+  }, [getSceneManager])
 
   const handleSceneError = useCallback((error: Error) => {
     toast({
@@ -110,6 +117,16 @@ export function PlaygroundLayout() {
       variant: "destructive"
     })
   }, [toast])
+
+  const handleAssetDrop = useCallback((asset: any) => {
+    const sceneManager = getSceneManager()
+    sceneManager.addAsset(asset.code, asset.name, asset.type)
+    
+    toast({
+      title: "Asset Added",
+      description: `${asset.name} has been added to the scene`,
+    })
+  }, [getSceneManager, toast])
 
   return (
     <div className="playground-layout">
@@ -127,27 +144,39 @@ export function PlaygroundLayout() {
         isRunning={isRunning}
       />
       
-      <div className="flex flex-1 h-[calc(100vh-3.5rem)]">
+      <ResizablePanelGroup direction="horizontal" className="flex-1 h-[calc(100vh-3.5rem)]">
         {/* Code Editor Panel */}
-        <div className="flex-1 editor-panel">
+        <ResizablePanel defaultSize={35} minSize={25}>
           <CodeEditor
             value={code}
             onChange={setCode}
             language={language}
             className="h-full custom-scrollbar"
           />
-        </div>
+        </ResizablePanel>
+        
+        <ResizableHandle withHandle />
         
         {/* Canvas Panel */}
-        <div className="flex-1 canvas-panel">
+        <ResizablePanel defaultSize={45} minSize={30}>
           <BabylonCanvas
             code={code}
             onSceneReady={handleSceneReady}
             onError={handleSceneError}
             className="h-full"
           />
-        </div>
-      </div>
+        </ResizablePanel>
+        
+        <ResizableHandle withHandle />
+        
+        {/* Assets Panel */}
+        <ResizablePanel defaultSize={20} minSize={15} maxSize={30}>
+          <AssetsPanel 
+            onAssetDrop={handleAssetDrop}
+            className="h-full"
+          />
+        </ResizablePanel>
+      </ResizablePanelGroup>
     </div>
   )
 }
