@@ -39,15 +39,103 @@ export class SceneManager {
     this.gizmoManager.scaleGizmoEnabled = true
     this.gizmoManager.boundingBoxGizmoEnabled = false
 
-    // Style the gizmos
+    // Style the gizmos for better visibility and usability
     if (this.gizmoManager.gizmos.positionGizmo) {
-      this.gizmoManager.gizmos.positionGizmo.scaleRatio = 0.8
+      // Make position gizmo larger with longer lines
+      this.gizmoManager.gizmos.positionGizmo.scaleRatio = 1.5
+      
+      // Make the lines thicker and longer
+      this.gizmoManager.gizmos.positionGizmo.xGizmo.dragBehavior.dragPlaneNormal = new BABYLON.Vector3(0, 0, 1)
+      this.gizmoManager.gizmos.positionGizmo.yGizmo.dragBehavior.dragPlaneNormal = new BABYLON.Vector3(1, 0, 0)
+      this.gizmoManager.gizmos.positionGizmo.zGizmo.dragBehavior.dragPlaneNormal = new BABYLON.Vector3(0, 1, 0)
+      
+      // Customize arrow materials for better visibility
+      if (this.gizmoManager.gizmos.positionGizmo.xGizmo._arrowMesh) {
+        const xMaterial = this.gizmoManager.gizmos.positionGizmo.xGizmo._arrowMesh.material as BABYLON.StandardMaterial
+        if (xMaterial) {
+          xMaterial.emissiveColor = new BABYLON.Color3(1, 0.2, 0.2)
+          xMaterial.diffuseColor = new BABYLON.Color3(1, 0, 0)
+        }
+      }
+      
+      if (this.gizmoManager.gizmos.positionGizmo.yGizmo._arrowMesh) {
+        const yMaterial = this.gizmoManager.gizmos.positionGizmo.yGizmo._arrowMesh.material as BABYLON.StandardMaterial
+        if (yMaterial) {
+          yMaterial.emissiveColor = new BABYLON.Color3(0.2, 1, 0.2)
+          yMaterial.diffuseColor = new BABYLON.Color3(0, 1, 0)
+        }
+      }
+      
+      if (this.gizmoManager.gizmos.positionGizmo.zGizmo._arrowMesh) {
+        const zMaterial = this.gizmoManager.gizmos.positionGizmo.zGizmo._arrowMesh.material as BABYLON.StandardMaterial
+        if (zMaterial) {
+          zMaterial.emissiveColor = new BABYLON.Color3(0.2, 0.2, 1)
+          zMaterial.diffuseColor = new BABYLON.Color3(0, 0, 1)
+        }
+      }
     }
+    
     if (this.gizmoManager.gizmos.rotationGizmo) {
-      this.gizmoManager.gizmos.rotationGizmo.scaleRatio = 0.8
+      // Make rotation gizmo larger with thicker rings
+      this.gizmoManager.gizmos.rotationGizmo.scaleRatio = 1.3
+      
+      // Enhance rotation ring visibility
+      if (this.gizmoManager.gizmos.rotationGizmo.xGizmo._rotationDisplayPlane) {
+        const xMaterial = this.gizmoManager.gizmos.rotationGizmo.xGizmo._rotationDisplayPlane.material as BABYLON.StandardMaterial
+        if (xMaterial) {
+          xMaterial.emissiveColor = new BABYLON.Color3(1, 0.3, 0.3)
+          xMaterial.alpha = 0.8
+        }
+      }
+      
+      if (this.gizmoManager.gizmos.rotationGizmo.yGizmo._rotationDisplayPlane) {
+        const yMaterial = this.gizmoManager.gizmos.rotationGizmo.yGizmo._rotationDisplayPlane.material as BABYLON.StandardMaterial
+        if (yMaterial) {
+          yMaterial.emissiveColor = new BABYLON.Color3(0.3, 1, 0.3)
+          yMaterial.alpha = 0.8
+        }
+      }
+      
+      if (this.gizmoManager.gizmos.rotationGizmo.zGizmo._rotationDisplayPlane) {
+        const zMaterial = this.gizmoManager.gizmos.rotationGizmo.zGizmo._rotationDisplayPlane.material as BABYLON.StandardMaterial
+        if (zMaterial) {
+          zMaterial.emissiveColor = new BABYLON.Color3(0.3, 0.3, 1)
+          zMaterial.alpha = 0.8
+        }
+      }
     }
+    
     if (this.gizmoManager.gizmos.scaleGizmo) {
-      this.gizmoManager.gizmos.scaleGizmo.scaleRatio = 0.8
+      // Make scale gizmo smaller than position gizmo but still visible
+      this.gizmoManager.gizmos.scaleGizmo.scaleRatio = 1.0
+      
+      // Enhance scale handle visibility
+      if (this.gizmoManager.gizmos.scaleGizmo.xGizmo._scaleBoxes) {
+        this.gizmoManager.gizmos.scaleGizmo.xGizmo._scaleBoxes.forEach((box: BABYLON.AbstractMesh) => {
+          const material = box.material as BABYLON.StandardMaterial
+          if (material) {
+            material.emissiveColor = new BABYLON.Color3(1, 0.4, 0.4)
+          }
+        })
+      }
+      
+      if (this.gizmoManager.gizmos.scaleGizmo.yGizmo._scaleBoxes) {
+        this.gizmoManager.gizmos.scaleGizmo.yGizmo._scaleBoxes.forEach((box: BABYLON.AbstractMesh) => {
+          const material = box.material as BABYLON.StandardMaterial
+          if (material) {
+            material.emissiveColor = new BABYLON.Color3(0.4, 1, 0.4)
+          }
+        })
+      }
+      
+      if (this.gizmoManager.gizmos.scaleGizmo.zGizmo._scaleBoxes) {
+        this.gizmoManager.gizmos.scaleGizmo.zGizmo._scaleBoxes.forEach((box: BABYLON.AbstractMesh) => {
+          const material = box.material as BABYLON.StandardMaterial
+          if (material) {
+            material.emissiveColor = new BABYLON.Color3(0.4, 0.4, 1)
+          }
+        })
+      }
     }
 
     // Handle mesh selection
