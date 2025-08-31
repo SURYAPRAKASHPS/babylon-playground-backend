@@ -1,18 +1,18 @@
 import { useRef, useEffect, useState } from 'react'
-import { Engine, Scene, FreeCamera, Vector3, HemisphericLight, MeshBuilder } from '@babylonjs/core'
+import * as BABYLON from '@babylonjs/core'
 import { cn } from '@/lib/utils'
 
 interface BabylonCanvasProps {
   code: string
   className?: string
-  onSceneReady?: (scene: Scene) => void
+  onSceneReady?: (scene: BABYLON.Scene) => void
   onError?: (error: Error) => void
 }
 
 export function BabylonCanvas({ code, className, onSceneReady, onError }: BabylonCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const engineRef = useRef<Engine | null>(null)
-  const sceneRef = useRef<Scene | null>(null)
+  const engineRef = useRef<BABYLON.Engine | null>(null)
+  const sceneRef = useRef<BABYLON.Scene | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -23,29 +23,23 @@ export function BabylonCanvas({ code, className, onSceneReady, onError }: Babylo
     
     try {
       // Create engine
-      const engine = new Engine(canvas, true, {
+      const engine = new BABYLON.Engine(canvas, true, {
         preserveDrawingBuffer: true,
         stencil: true,
         antialias: true
       })
       engineRef.current = engine
 
-      // Create default scene
-      const scene = new Scene(engine)
-      sceneRef.current = scene
-
-      // Create default camera
-      const camera = new FreeCamera("camera1", new Vector3(0, 5, -10), scene)
-      camera.setTarget(Vector3.Zero())
-      camera.attachControl(canvas, true)
-
-      // Create default light
-      const light = new HemisphericLight("light", new Vector3(0, 1, 0), scene)
-      light.intensity = 0.7
+      // Make BABYLON global available
+      ;(window as any).BABYLON = BABYLON
+      ;(window as any).engine = engine
+      ;(window as any).canvas = canvas
 
       // Start render loop
       engine.runRenderLoop(() => {
-        scene.render()
+        if (sceneRef.current) {
+          sceneRef.current.render()
+        }
       })
 
       // Handle resize
@@ -55,11 +49,12 @@ export function BabylonCanvas({ code, className, onSceneReady, onError }: Babylo
       window.addEventListener('resize', handleResize)
 
       setIsLoading(false)
-      onSceneReady?.(scene)
 
       return () => {
         window.removeEventListener('resize', handleResize)
-        scene.dispose()
+        if (sceneRef.current) {
+          sceneRef.current.dispose()
+        }
         engine.dispose()
       }
     } catch (err) {
@@ -70,12 +65,11 @@ export function BabylonCanvas({ code, className, onSceneReady, onError }: Babylo
   }, [onSceneReady])
 
   useEffect(() => {
-    if (!engineRef.current || !canvasRef.current || !code.trim()) return
+    if (!engineRef.current || !canvasRef.current) return
 
     try {
       setError(null)
       
-      // Create new scene
       const engine = engineRef.current
       const canvas = canvasRef.current
       
@@ -84,36 +78,80 @@ export function BabylonCanvas({ code, className, onSceneReady, onError }: Babylo
         sceneRef.current.dispose()
       }
 
-      // Create fresh scene
-      const scene = new Scene(engine)
+      let scene: BABYLON.Scene
+      
+      if (code.trim()) {
+        // Execute user code
+        try {
+          // Set up global variables
+          ;(window as any).scene = null
+          ;(window as any).engine = engine
+          ;(window as any).canvas = canvas
+          
+          // Execute the code
+          const userFunction = new Function('BABYLON', 'engine', 'canvas', `
+            ${code}
+            
+            // If createScene function exists, call it and return the scene
+            if (typeof createScene === "function") {
+              return createScene();
+            }
+            
+            // Otherwise return the global scene if it was created
+            return window.scene;
+          `)
+          
+          scene = userFunction(BABYLON, engine, canvas)
+          
+          // If no scene was returned, create a default one
+          if (!scene) {
+            scene = new BABYLON.Scene(engine)
+          }
+          
+        } catch (userError) {
+          console.error('Error in user code:', userError)
+          setError(userError instanceof Error ? userError.message : 'Error in user code')
+          
+          // Create fallback scene
+          scene = new BABYLON.Scene(engine)
+          
+          // Add default content for fallback
+          const camera = new BABYLON.FreeCamera("camera1", new BABYLON.Vector3(0, 5, -10), scene)
+          camera.setTarget(BABYLON.Vector3.Zero())
+          camera.attachControl(canvas, true)
+          
+          const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene)
+          light.intensity = 0.7
+        }
+      } else {
+        // Create default scene when no code
+        scene = new BABYLON.Scene(engine)
+        
+        // Add default camera
+        const camera = new BABYLON.FreeCamera("camera1", new BABYLON.Vector3(0, 5, -10), scene)
+        camera.setTarget(BABYLON.Vector3.Zero())
+        camera.attachControl(canvas, true)
+        
+        // Add default light  
+        const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene)
+        light.intensity = 0.7
+        
+        // Add a default sphere
+        const sphere = BABYLON.MeshBuilder.CreateSphere("sphere", {diameter: 2, segments: 32}, scene)
+        sphere.position.y = 1
+        
+        // Add default ground
+        const ground = BABYLON.MeshBuilder.CreateGround("ground", {width: 6, height: 6}, scene)
+      }
+      
       sceneRef.current = scene
-
-      // Make globals available for user code
-      ;(window as any).BABYLON = { 
-        Scene, 
-        Engine, 
-        FreeCamera, 
-        Vector3, 
-        HemisphericLight, 
-        MeshBuilder,
-        // Add more BABYLON classes as needed
-      }
-      ;(window as any).engine = engine
-      ;(window as any).canvas = canvas
       ;(window as any).scene = scene
-
-      // Execute user code
-      const userFunction = new Function(code + '\n\nif (typeof createScene === "function") { return createScene(); }')
-      const userScene = userFunction()
-
-      if (userScene && userScene.render) {
-        sceneRef.current = userScene
-        onSceneReady?.(userScene)
-      }
+      
+      onSceneReady?.(scene)
 
     } catch (err) {
-      console.error('Error executing user code:', err)
-      setError(err instanceof Error ? err.message : 'Error in user code')
+      console.error('Error setting up scene:', err)
+      setError(err instanceof Error ? err.message : 'Error setting up 3D scene')
       onError?.(err instanceof Error ? err : new Error('Unknown error'))
     }
   }, [code, onSceneReady, onError])
