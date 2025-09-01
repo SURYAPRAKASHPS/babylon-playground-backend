@@ -104,25 +104,8 @@ export function CodeEditor({ value, onChange, language, className }: CodeEditorP
         height="100%"
         language={language}
         value={displayValue}
-        onChange={(val, ev) => {
-  if (!editorRef.current) return
-
-  const monacoInstance = editorRef.current._monaco
-  const model = editorRef.current.getModel?.()
-
-  if (monacoInstance && model) {
-    const markers = monacoInstance.editor.getModelMarkers({ resource: model.uri })
-
-    if (markers.length === 0) {
-      // ✅ Only send code to canvas when error-free
-      onChange(val || '')
-    } else {
-      // ❌ Block sending bad code
-      console.log("Skipped update because of syntax error")
-    }
-  }
-}}
         onMount={handleEditorDidMount}
+        onChange={(val) => onChange(val || '')}
         options={{
           theme: 'babylon-dark',
           fontSize: 14,
