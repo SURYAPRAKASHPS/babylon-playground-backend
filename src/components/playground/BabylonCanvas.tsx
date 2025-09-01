@@ -13,6 +13,7 @@ export function BabylonCanvas({ code, className, onSceneReady, onError }: Babylo
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const engineRef = useRef<BABYLON.Engine | null>(null)
   const sceneRef = useRef<BABYLON.Scene | null>(null)
+  const resizeObserverRef = useRef<ResizeObserver | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -48,10 +49,24 @@ export function BabylonCanvas({ code, className, onSceneReady, onError }: Babylo
       }
       window.addEventListener('resize', handleResize)
 
+      // Setup ResizeObserver for panel resizing
+      if (canvasRef.current?.parentElement) {
+        resizeObserverRef.current = new ResizeObserver(() => {
+          // Delay resize to ensure DOM has updated
+          requestAnimationFrame(() => {
+            engine.resize()
+          })
+        })
+        resizeObserverRef.current.observe(canvasRef.current.parentElement)
+      }
+
       setIsLoading(false)
 
       return () => {
         window.removeEventListener('resize', handleResize)
+        if (resizeObserverRef.current) {
+          resizeObserverRef.current.disconnect()
+        }
         if (sceneRef.current) {
           sceneRef.current.dispose()
         }

@@ -108,6 +108,18 @@ export function PlaygroundLayout() {
     // Setup scene manager with gizmos and code synchronization
     const sceneManager = getSceneManager()
     sceneManager.setScene(scene, setCode)
+    
+    // Handle resize events from the scene manager
+    const handleResize = () => {
+      sceneManager.handleResize()
+    }
+    
+    // Listen for panel resize events
+    window.addEventListener('resize', handleResize)
+    
+    return () => {
+      window.removeEventListener('resize', handleResize)
+    }
   }, [getSceneManager])
 
   const handleSceneError = useCallback((error: Error) => {
