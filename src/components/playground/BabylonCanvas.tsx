@@ -14,7 +14,9 @@ export function BabylonCanvas({ code, className, onSceneReady, onError }: Babylo
   const engineRef = useRef<BABYLON.Engine | null>(null)
   const sceneRef = useRef<BABYLON.Scene | null>(null)
   const resizeObserverRef = useRef<ResizeObserver | null>(null)
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isExecuting, setIsExecuting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -79,95 +81,122 @@ export function BabylonCanvas({ code, className, onSceneReady, onError }: Babylo
     }
   }, [onSceneReady])
 
-  useEffect(() => {
-    if (!engineRef.current || !canvasRef.current) return
-
-    try {
-      setError(null)
-      
-      const engine = engineRef.current
-      const canvas = canvasRef.current
-      
-      // Dispose previous scene
-      if (sceneRef.current) {
-        sceneRef.current.dispose()
+  const executeCodeWithDelay = (codeToExecute: string) => {
+    // Clear existing timeout
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current)
+    }
+    
+    // Set executing state
+    setIsExecuting(true)
+    
+    // Set new timeout for 300ms
+    debounceTimeoutRef.current = setTimeout(() => {
+      if (!engineRef.current || !canvasRef.current) {
+        setIsExecuting(false)
+        return
       }
 
-      let scene: BABYLON.Scene
-      
-      if (code.trim()) {
-        // Execute user code
-        try {
-          // Set up global variables
-          ;(window as any).scene = null
-          ;(window as any).engine = engine
-          ;(window as any).canvas = canvas
-          
-          // Execute the code
-          const userFunction = new Function('BABYLON', 'engine', 'canvas', `
-            ${code}
+      try {
+        setError(null)
+        
+        const engine = engineRef.current
+        const canvas = canvasRef.current
+        
+        // Dispose previous scene
+        if (sceneRef.current) {
+          sceneRef.current.dispose()
+        }
+
+        let scene: BABYLON.Scene
+        
+        if (codeToExecute.trim()) {
+          // Execute user code
+          try {
+            // Set up global variables
+            ;(window as any).scene = null
+            ;(window as any).engine = engine
+            ;(window as any).canvas = canvas
             
-            // If createScene function exists, call it and return the scene
-            if (typeof createScene === "function") {
-              return createScene();
+            // Execute the code
+            const userFunction = new Function('BABYLON', 'engine', 'canvas', `
+              ${codeToExecute}
+              
+              // If createScene function exists, call it and return the scene
+              if (typeof createScene === "function") {
+                return createScene();
+              }
+              
+              // Otherwise return the global scene if it was created
+              return window.scene;
+            `)
+            
+            scene = userFunction(BABYLON, engine, canvas)
+            
+            // If no scene was returned, create a default one
+            if (!scene) {
+              scene = new BABYLON.Scene(engine)
             }
             
-            // Otherwise return the global scene if it was created
-            return window.scene;
-          `)
-          
-          scene = userFunction(BABYLON, engine, canvas)
-          
-          // If no scene was returned, create a default one
-          if (!scene) {
+          } catch (userError) {
+            console.error('Error in user code:', userError)
+            setError(userError instanceof Error ? userError.message : 'Error in user code')
+            
+            // Create fallback scene
             scene = new BABYLON.Scene(engine)
+            
+            // Add default content for fallback
+            const camera = new BABYLON.FreeCamera("camera1", new BABYLON.Vector3(0, 5, -10), scene)
+            camera.setTarget(BABYLON.Vector3.Zero())
+            camera.attachControl(canvas, true)
+            
+            const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene)
+            light.intensity = 0.7
           }
-          
-        } catch (userError) {
-          console.error('Error in user code:', userError)
-          setError(userError instanceof Error ? userError.message : 'Error in user code')
-          
-          // Create fallback scene
+        } else {
+          // Create default scene when no code
           scene = new BABYLON.Scene(engine)
           
-          // Add default content for fallback
+          // Add default camera
           const camera = new BABYLON.FreeCamera("camera1", new BABYLON.Vector3(0, 5, -10), scene)
           camera.setTarget(BABYLON.Vector3.Zero())
           camera.attachControl(canvas, true)
           
+          // Add default light  
           const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene)
           light.intensity = 0.7
+          
+          // Add a default sphere
+          const sphere = BABYLON.MeshBuilder.CreateSphere("sphere", {diameter: 2, segments: 32}, scene)
+          sphere.position.y = 1
+          
+          // Add default ground
+          const ground = BABYLON.MeshBuilder.CreateGround("ground", {width: 6, height: 6}, scene)
         }
-      } else {
-        // Create default scene when no code
-        scene = new BABYLON.Scene(engine)
         
-        // Add default camera
-        const camera = new BABYLON.FreeCamera("camera1", new BABYLON.Vector3(0, 5, -10), scene)
-        camera.setTarget(BABYLON.Vector3.Zero())
-        camera.attachControl(canvas, true)
+        sceneRef.current = scene
+        ;(window as any).scene = scene
         
-        // Add default light  
-        const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene)
-        light.intensity = 0.7
-        
-        // Add a default sphere
-        const sphere = BABYLON.MeshBuilder.CreateSphere("sphere", {diameter: 2, segments: 32}, scene)
-        sphere.position.y = 1
-        
-        // Add default ground
-        const ground = BABYLON.MeshBuilder.CreateGround("ground", {width: 6, height: 6}, scene)
-      }
-      
-      sceneRef.current = scene
-      ;(window as any).scene = scene
-      
-      onSceneReady?.(scene)
+        onSceneReady?.(scene)
 
-    } catch (err) {
-      console.error('Error setting up scene:', err)
-      setError(err instanceof Error ? err.message : 'Error setting up 3D scene')
-      onError?.(err instanceof Error ? err : new Error('Unknown error'))
+      } catch (err) {
+        console.error('Error setting up scene:', err)
+        setError(err instanceof Error ? err.message : 'Error setting up 3D scene')
+        onError?.(err instanceof Error ? err : new Error('Unknown error'))
+      } finally {
+        setIsExecuting(false)
+      }
+    }, 300)
+  }
+
+  useEffect(() => {
+    executeCodeWithDelay(code)
+    
+    // Cleanup timeout on unmount
+    return () => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current)
+      }
     }
   }, [code, onSceneReady, onError])
 
@@ -185,6 +214,16 @@ export function BabylonCanvas({ code, className, onSceneReady, onError }: Babylo
           <div className="text-center">
             <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
             <p className="text-sm text-muted-foreground">Initializing 3D Engine...</p>
+          </div>
+        </div>
+      )}
+
+      {/* Executing overlay */}
+      {isExecuting && !isLoading && (
+        <div className="absolute top-4 right-4 bg-card border border-border rounded-lg p-2 shadow-md">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 border border-primary border-t-transparent rounded-full animate-spin"></div>
+            <span className="text-xs text-muted-foreground">Updating...</span>
           </div>
         </div>
       )}
