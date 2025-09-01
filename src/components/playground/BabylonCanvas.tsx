@@ -190,6 +190,22 @@ export function BabylonCanvas({ code, className, onSceneReady, onError }: Babylo
         sceneRef.current = scene
         ;(window as any).scene = scene
         
+        // Initialize inspector if available
+        if (scene && typeof scene.debugLayer !== 'undefined') {
+          scene.debugLayer.show({
+            showExplorer: true,
+            showInspector: true,
+            embedMode: false,
+            overlay: true,
+            handleResize: true
+          }).then(() => {
+            // Hide it initially
+            scene.debugLayer.hide()
+          }).catch((err) => {
+            console.warn('Inspector initialization failed:', err)
+          })
+        }
+        
         onSceneReady?.(scene)
 
       } catch (err) {

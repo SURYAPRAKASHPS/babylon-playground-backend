@@ -83,10 +83,28 @@ export function PlaygroundLayout() {
   }, [code, language, toast])
 
   const handleInspector = useCallback(() => {
-    toast({
-      title: "Inspector",
-      description: "Inspector feature coming soon!",
-    })
+    const globalWindow = window as any
+    if (globalWindow.scene && globalWindow.scene.debugLayer) {
+      if (globalWindow.scene.debugLayer.isVisible()) {
+        globalWindow.scene.debugLayer.hide()
+        toast({
+          title: "Inspector closed",
+          description: "Debug panel has been hidden",
+        })
+      } else {
+        globalWindow.scene.debugLayer.show()
+        toast({
+          title: "Inspector opened",
+          description: "Use the debug panel to inspect and modify your scene",
+        })
+      }
+    } else {
+      toast({
+        title: "Inspector unavailable",
+        description: "No active scene to inspect",
+        variant: "destructive"
+      })
+    }
   }, [toast])
 
   const handleExamples = useCallback(() => {

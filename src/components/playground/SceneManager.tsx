@@ -25,6 +25,7 @@ export class SceneManager {
     this.scene = scene
     this.onCodeUpdate = onCodeUpdate || null
     this.setupGizmos()
+    this.syncExistingObjects()
   }
 
   private setupGizmos() {
@@ -309,6 +310,75 @@ ${allObjectCodes}
           }, 50)
         }
       }
+    }
+  }
+
+  private syncExistingObjects() {
+    if (!this.scene) return
+
+    // Clear existing tracked objects
+    this.objects.clear()
+
+    // Find all user-created meshes (exclude default ground, skybox, etc.)
+    this.scene.meshes.forEach((mesh, index) => {
+      if (mesh.name !== 'ground' && mesh.name !== '__root__' && mesh.name !== 'skybox') {
+        const id = `existing_${mesh.name}_${index}`
+        const sceneObject: SceneObject = {
+          id,
+          name: mesh.name || `Mesh ${index}`,
+          type: 'mesh',
+          babylonObject: mesh,
+          code: this.generateObjectCode(mesh, mesh.name || `Mesh ${index}`, 'mesh')
+        }
+        this.objects.set(id, sceneObject)
+
+        // Add property change listeners
+        this.setupObjectPropertyListeners(mesh, sceneObject)
+      }
+    })
+
+    // Sync lights (exclude default ones)
+    this.scene.lights.forEach((light, index) => {
+      if (light.name !== 'light' && light.name !== '__default__') {
+        const id = `existing_${light.name}_${index}`
+        const sceneObject: SceneObject = {
+          id,
+          name: light.name || `Light ${index}`,
+          type: 'light',
+          babylonObject: light,
+          code: this.generateObjectCode(light, light.name || `Light ${index}`, 'light')
+        }
+        this.objects.set(id, sceneObject)
+      }
+    })
+
+    // Update code with existing objects
+    this.updateCode()
+  }
+
+  private setupObjectPropertyListeners(obj: any, sceneObject: SceneObject) {
+    // Debounced update function
+    let updateTimeout: NodeJS.Timeout
+    const debouncedUpdate = () => {
+      clearTimeout(updateTimeout)
+      updateTimeout = setTimeout(() => {
+        this.updateObjectCode(sceneObject)
+      }, 500)
+    }
+
+    // Listen for property changes on the object
+    if (obj.position) {
+      const originalSetX = obj.position._x
+      const originalSetY = obj.position._y  
+      const originalSetZ = obj.position._z
+
+      Object.defineProperty(obj.position, '_x', {
+        set: function(value) {
+          originalSetX.call(this, value)
+          debouncedUpdate()
+        },
+        get: function() { return originalSetX.call(this) }
+      })
     }
   }
 
