@@ -1,5 +1,6 @@
 import { useRef, useEffect, useState } from 'react'
 import * as BABYLON from '@babylonjs/core'
+import '@babylonjs/inspector'
 import { cn } from '@/lib/utils'
 
 interface BabylonCanvasProps {
