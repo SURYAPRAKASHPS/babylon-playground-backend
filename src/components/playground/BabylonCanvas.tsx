@@ -1,6 +1,5 @@
 import { useRef, useEffect, useState } from 'react'
 import * as BABYLON from '@babylonjs/core'
-import '@babylonjs/inspector'
 import { cn } from '@/lib/utils'
 
 interface BabylonCanvasProps {
@@ -31,7 +30,8 @@ export function BabylonCanvas({ code, className, onSceneReady, onError }: Babylo
       const engine = new BABYLON.Engine(canvas, true, {
         preserveDrawingBuffer: true,
         stencil: true,
-        antialias: true
+        antialias: true,
+        adaptToDeviceRatio: true
       })
       engineRef.current = engine
 
@@ -39,6 +39,30 @@ export function BabylonCanvas({ code, className, onSceneReady, onError }: Babylo
       ;(window as any).BABYLON = BABYLON
       ;(window as any).engine = engine
       ;(window as any).canvas = canvas
+
+      // Create initial scene immediately
+      const initialScene = new BABYLON.Scene(engine)
+      
+      // Add default camera
+      const camera = new BABYLON.FreeCamera("camera1", new BABYLON.Vector3(0, 5, -10), initialScene)
+      camera.setTarget(BABYLON.Vector3.Zero())
+      camera.attachControl(canvas, true)
+      
+      // Add default light  
+      const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), initialScene)
+      light.intensity = 0.7
+      
+      // Add a default sphere
+      const sphere = BABYLON.MeshBuilder.CreateSphere("sphere", {diameter: 2, segments: 32}, initialScene)
+      sphere.position.y = 1
+      
+      // Add default ground
+      const ground = BABYLON.MeshBuilder.CreateGround("ground", {width: 6, height: 6}, initialScene)
+      
+      sceneRef.current = initialScene
+      ;(window as any).scene = initialScene
+      
+      onSceneReady?.(initialScene)
 
       // Start render loop
       engine.runRenderLoop(() => {
@@ -193,18 +217,7 @@ export function BabylonCanvas({ code, className, onSceneReady, onError }: Babylo
         
         // Initialize inspector if available
         if (scene && typeof scene.debugLayer !== 'undefined') {
-          scene.debugLayer.show({
-            showExplorer: true,
-            showInspector: true,
-            embedMode: false,
-            overlay: true,
-            handleResize: true
-          }).then(() => {
-            // Hide it initially
-            scene.debugLayer.hide()
-          }).catch((err) => {
-            console.warn('Inspector initialization failed:', err)
-          })
+          // Inspector will be initialized when needed
         }
         
         onSceneReady?.(scene)
