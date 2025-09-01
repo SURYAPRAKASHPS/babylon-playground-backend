@@ -104,16 +104,19 @@ export function CodeEditor({ value, onChange, language, className }: CodeEditorP
         height="100%"
         language={language}
         value={displayValue}
-        onChange={(val) => onChange(val || ev)}if (ev?.changes?.some(change => change.text === '' || change.rangeLength > 0)) {
-      // typing or deletion → ignore
-      return
-    }
-
-    // check if it's a drop operation
-    if (ev?.reason === 4 /* ContentChangeReason.UndoRedo */ || ev?.changes?.some(c => c.text.includes("position"))) {
+        onChange={(val, ev) => {
+  if (!editorRef.current) return
+  const monacoInstance = editorRef.current._monaco // reference from react wrapper
+  const model = editorRef.current.getModel?.()
+  if (monacoInstance && model) {
+    const markers = monacoInstance.editor.getModelMarkers({ resource: model.uri })
+    if (markers.length === 0) {
+      // ✅ only update when there are no syntax errors
       onChange(val || '')
     }
-  }}
+  }
+}}
+
         onMount={handleEditorDidMount}
         options={{
           theme: 'babylon-dark',
