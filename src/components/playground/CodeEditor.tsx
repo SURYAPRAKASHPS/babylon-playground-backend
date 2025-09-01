@@ -136,6 +136,10 @@ export function CodeEditor({ value, onChange, language, className }: CodeEditorP
           roundedSelection: false,
           readOnly: false,
           cursorStyle: 'line',
+           dragAndDrop: true,
+          formatOnType: false,
+          formatOnPaste: false,
+          autoIndent: 'none',
         }}
       />
     </div>
