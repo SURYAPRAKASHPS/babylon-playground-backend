@@ -15,6 +15,7 @@ export function BabylonCanvas({ code, className, onSceneReady, onError }: Babylo
   const sceneRef = useRef<BABYLON.Scene | null>(null)
   const resizeObserverRef = useRef<ResizeObserver | null>(null)
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const resizeTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isExecuting, setIsExecuting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -45,19 +46,28 @@ export function BabylonCanvas({ code, className, onSceneReady, onError }: Babylo
         }
       })
 
-      // Handle resize
+      // Debounced resize handler
       const handleResize = () => {
-        engine.resize()
+        if (resizeTimeoutRef.current) {
+          clearTimeout(resizeTimeoutRef.current)
+        }
+        
+        resizeTimeoutRef.current = setTimeout(() => {
+          engine.resize()
+        }, 300)
       }
       window.addEventListener('resize', handleResize)
 
-      // Setup ResizeObserver for panel resizing
+      // Setup ResizeObserver for panel resizing with debouncing
       if (canvasRef.current?.parentElement) {
         resizeObserverRef.current = new ResizeObserver(() => {
-          // Delay resize to ensure DOM has updated
-          requestAnimationFrame(() => {
+          if (resizeTimeoutRef.current) {
+            clearTimeout(resizeTimeoutRef.current)
+          }
+          
+          resizeTimeoutRef.current = setTimeout(() => {
             engine.resize()
-          })
+          }, 300)
         })
         resizeObserverRef.current.observe(canvasRef.current.parentElement)
       }
@@ -66,6 +76,9 @@ export function BabylonCanvas({ code, className, onSceneReady, onError }: Babylo
 
       return () => {
         window.removeEventListener('resize', handleResize)
+        if (resizeTimeoutRef.current) {
+          clearTimeout(resizeTimeoutRef.current)
+        }
         if (resizeObserverRef.current) {
           resizeObserverRef.current.disconnect()
         }
