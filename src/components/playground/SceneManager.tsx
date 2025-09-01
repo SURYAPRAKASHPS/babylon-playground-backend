@@ -357,29 +357,8 @@ ${allObjectCodes}
   }
 
   private setupObjectPropertyListeners(obj: any, sceneObject: SceneObject) {
-    // Debounced update function
-    let updateTimeout: NodeJS.Timeout
-    const debouncedUpdate = () => {
-      clearTimeout(updateTimeout)
-      updateTimeout = setTimeout(() => {
-        this.updateObjectCode(sceneObject)
-      }, 500)
-    }
-
-    // Listen for property changes on the object
-    if (obj.position) {
-      const originalSetX = obj.position._x
-      const originalSetY = obj.position._y  
-      const originalSetZ = obj.position._z
-
-      Object.defineProperty(obj.position, '_x', {
-        set: function(value) {
-          originalSetX.call(this, value)
-          debouncedUpdate()
-        },
-        get: function() { return originalSetX.call(this) }
-      })
-    }
+    // Property listeners are handled by gizmo events in setupGizmoEvents
+    // This method is kept for future property listening implementations
   }
 
   dispose() {
