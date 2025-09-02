@@ -142,7 +142,7 @@ export function BabylonCanvas({ code, className, onSceneReady, onError }: Babylo
         const engine = engineRef.current
         const canvas = canvasRef.current
         
-        // Save current camera state before disposing scene
+        // Save current camera state and selected mesh before disposing scene
         let savedCameraState: {
           position: BABYLON.Vector3
           rotation?: BABYLON.Vector3
@@ -152,6 +152,8 @@ export function BabylonCanvas({ code, className, onSceneReady, onError }: Babylo
           radius?: number
           type: string
         } | null = null
+        
+        let selectedMeshName: string | null = null
         
         if (sceneRef.current) {
           const currentCamera = sceneRef.current.activeCamera
@@ -173,6 +175,13 @@ export function BabylonCanvas({ code, className, onSceneReady, onError }: Babylo
               savedCameraState.target = arcCamera.target.clone()
             }
           }
+          
+          // Save selected mesh name from gizmo manager if available
+          const sceneManager = (window as any).sceneManager
+          if (sceneManager?.gizmoManager?.attachedMesh) {
+            selectedMeshName = sceneManager.gizmoManager.attachedMesh.name
+          }
+          
           sceneRef.current.dispose()
         }
 
@@ -271,6 +280,9 @@ export function BabylonCanvas({ code, className, onSceneReady, onError }: Babylo
         
         // Inspector is now available via the import
         // The debug layer will be ready when scene.debugLayer.show() is called
+        
+        // Pass selected mesh name to the scene ready callback for restoration
+        ;(scene as any)._selectedMeshName = selectedMeshName
         
         onSceneReady?.(scene)
 

@@ -313,6 +313,17 @@ ${allObjectCodes}
     }
   }
 
+  restoreSelection(meshName: string) {
+    if (!this.scene || !this.gizmoManager) return
+    
+    // Find mesh by name in the current scene
+    const mesh = this.scene.meshes.find(m => m.name === meshName)
+    if (mesh && mesh.name !== 'ground' && mesh.name !== 'skybox') {
+      this.gizmoManager.attachToMesh(mesh)
+      this.setupGizmoEvents(mesh)
+    }
+  }
+
   private syncExistingObjects() {
     if (!this.scene) return
 

@@ -150,6 +150,16 @@ export function PlaygroundLayout() {
     const sceneManager = getSceneManager()
     sceneManager.setScene(scene, setCode)
     
+    // Restore selected mesh if it was saved during code update
+    if (scene._selectedMeshName) {
+      setTimeout(() => {
+        sceneManager.restoreSelection(scene._selectedMeshName)
+      }, 100)
+    }
+    
+    // Make scene manager globally available for selection preservation
+    ;(window as any).sceneManager = sceneManager
+    
     // Handle resize events from the scene manager
     const handleResize = () => {
       sceneManager.handleResize()
