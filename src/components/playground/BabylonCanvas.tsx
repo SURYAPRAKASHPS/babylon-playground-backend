@@ -142,8 +142,37 @@ export function BabylonCanvas({ code, className, onSceneReady, onError }: Babylo
         const engine = engineRef.current
         const canvas = canvasRef.current
         
-        // Dispose previous scene
+        // Save current camera state before disposing scene
+        let savedCameraState: {
+          position: BABYLON.Vector3
+          rotation?: BABYLON.Vector3
+          target?: BABYLON.Vector3
+          alpha?: number
+          beta?: number
+          radius?: number
+          type: string
+        } | null = null
+        
         if (sceneRef.current) {
+          const currentCamera = sceneRef.current.activeCamera
+          if (currentCamera) {
+            savedCameraState = {
+              position: currentCamera.position.clone(),
+              type: currentCamera.getClassName()
+            }
+            
+            // Handle different camera types
+            if (currentCamera instanceof BABYLON.FreeCamera) {
+              savedCameraState.rotation = (currentCamera as BABYLON.FreeCamera).rotation.clone()
+              savedCameraState.target = (currentCamera as any).target?.clone()
+            } else if (currentCamera instanceof BABYLON.ArcRotateCamera) {
+              const arcCamera = currentCamera as BABYLON.ArcRotateCamera
+              savedCameraState.alpha = arcCamera.alpha
+              savedCameraState.beta = arcCamera.beta
+              savedCameraState.radius = arcCamera.radius
+              savedCameraState.target = arcCamera.target.clone()
+            }
+          }
           sceneRef.current.dispose()
         }
 
@@ -211,6 +240,30 @@ export function BabylonCanvas({ code, className, onSceneReady, onError }: Babylo
           
           // Add default ground
           const ground = BABYLON.MeshBuilder.CreateGround("ground", {width: 6, height: 6}, scene)
+        }
+        
+        // Restore camera state if no camera was created by user code and we have saved state
+        if (savedCameraState && (!scene.activeCamera || scene.cameras.length === 0)) {
+          if (savedCameraState.type === 'FreeCamera') {
+            const camera = new BABYLON.FreeCamera("camera1", savedCameraState.position, scene)
+            if (savedCameraState.rotation) {
+              camera.rotation = savedCameraState.rotation
+            }
+            if (savedCameraState.target) {
+              camera.setTarget(savedCameraState.target)
+            }
+            camera.attachControl(canvas, true)
+          } else if (savedCameraState.type === 'ArcRotateCamera' && savedCameraState.target) {
+            const camera = new BABYLON.ArcRotateCamera(
+              "camera1", 
+              savedCameraState.alpha || 0, 
+              savedCameraState.beta || 0, 
+              savedCameraState.radius || 10, 
+              savedCameraState.target, 
+              scene
+            )
+            camera.attachControl(canvas, true)
+          }
         }
         
         sceneRef.current = scene
