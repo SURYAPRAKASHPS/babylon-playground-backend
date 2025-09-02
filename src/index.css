@@ -162,24 +162,27 @@ All colors MUST be HSL.
     z-index: 1;
   }
 
-  /* Ensure toolbar stays on top */
+  /* Ensure toolbar stays on top always */
   .playground-layout > div:first-child {
-    position: relative;
-    z-index: 1000 !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 10000 !important;
+    background: hsl(var(--toolbar-background)) !important;
   }
 
   /* Babylon Inspector container adjustments */
-  #babylon-inspector-host {
-    top: 56px !important; /* Height of toolbar (h-14 = 3.5rem = 56px) */
-    height: calc(100vh - 56px) !important;
-    z-index: 999 !important;
-  }
-
-  /* Alternative inspector selectors */
+  #babylon-inspector-host,
   .inspector-host,
   .debug-layer-host {
     top: 56px !important;
     height: calc(100vh - 56px) !important;
-    z-index: 999 !important;
+    z-index: 9999 !important;
+    position: fixed !important;
+  }
+
+  /* Prevent canvas from affecting toolbar visibility */
+  canvas {
+    position: relative !important;
+    z-index: 1 !important;
   }
 }

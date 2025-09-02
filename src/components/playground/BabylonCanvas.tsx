@@ -247,7 +247,11 @@ export function BabylonCanvas({ code, className, onSceneReady, onError }: Babylo
       <canvas 
         ref={canvasRef}
         className="w-full h-full block"
-        style={{ outline: 'none' }}
+        style={{ 
+          outline: 'none',
+          pointerEvents: 'auto'
+        }}
+        tabIndex={0}
       />
       
       {/* Loading overlay */}
