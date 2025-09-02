@@ -82,7 +82,7 @@ export function PlaygroundLayout() {
     })
   }, [code, language, toast])
 
-  const handleInspector = useCallback(() => {
+  const handleInspector = useCallback(async () => {
     const globalWindow = window as any
     if (globalWindow.scene && globalWindow.scene.debugLayer) {
       if (globalWindow.scene.debugLayer.isVisible()) {
@@ -92,7 +92,30 @@ export function PlaygroundLayout() {
           description: "Debug panel has been hidden",
         })
       } else {
-        globalWindow.scene.debugLayer.show()
+        // Configure inspector to not take full screen
+        await globalWindow.scene.debugLayer.show({
+          embedMode: false,
+          overlay: true,
+          globalRoot: document.body,
+          showExplorer: true,
+          hideActionTabs: false,
+          handleResize: true,
+          initialTab: 0
+        })
+        
+        // Adjust inspector position after it's shown
+        setTimeout(() => {
+          const inspectorHost = document.querySelector('#babylon-inspector-host') || 
+                               document.querySelector('.inspector-host') ||
+                               document.querySelector('[class*="inspector"]')
+          
+          if (inspectorHost && inspectorHost instanceof HTMLElement) {
+            inspectorHost.style.top = '56px'
+            inspectorHost.style.height = 'calc(100vh - 56px)'
+            inspectorHost.style.zIndex = '999'
+          }
+        }, 100)
+        
         toast({
           title: "Inspector opened",
           description: "Use the debug panel to inspect and modify your scene",
