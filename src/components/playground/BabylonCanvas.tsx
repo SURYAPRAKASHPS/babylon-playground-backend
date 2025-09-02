@@ -1,5 +1,6 @@
 import { useRef, useEffect, useState } from 'react'
 import * as BABYLON from '@babylonjs/core'
+import '@babylonjs/inspector'
 import { cn } from '@/lib/utils'
 
 interface BabylonCanvasProps {
@@ -215,10 +216,8 @@ export function BabylonCanvas({ code, className, onSceneReady, onError }: Babylo
         sceneRef.current = scene
         ;(window as any).scene = scene
         
-        // Initialize inspector if available
-        if (scene && typeof scene.debugLayer !== 'undefined') {
-          // Inspector will be initialized when needed
-        }
+        // Inspector is now available via the import
+        // The debug layer will be ready when scene.debugLayer.show() is called
         
         onSceneReady?.(scene)
 
